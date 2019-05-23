@@ -64,7 +64,7 @@ go get -u -v github.com/shmish111/terraform-provider-statevar
 Clone repository to: `$GOPATH/src/github.com/shmish111/terraform-provider-statevar`
 
 ```sh
-$ git clone git@github.com:tweag/terraform-provider-statevar $GOPATH/src/github.com/shmish111/terraform-provider-statevar
+$ git clone git@github.com:shmish111/terraform-provider-statevar $GOPATH/src/github.com/shmish111/terraform-provider-statevar
 ```
 
 Enter the provider directory and build the provider
