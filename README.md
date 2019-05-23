@@ -1,20 +1,41 @@
-Terraform `secret` Provider &#x1F49C;
+Terraform `statevar` Provider
 ===================================
 
-The `secret` provider has one mission: store secrets in the Terraform state.
+The `statevar` provider allows you to store arbitrary strings in the terraform state. It is a fork of [terraform-provider-secret](https://github.com/tweag/terraform-provider-secret) but adds the ability to assign a default value and is not designed for storing secrets. If you wish to store secrets then keep using [terraform-provider-secret](https://github.com/tweag/terraform-provider-secret).
 
-Please be careful about your security stance before adopting this!
+Terraform workspaces are great for sharing similar environments, for example you could have a `prod` workspace, a `staging` workspace and even a `david` workspace, each defining a separate but similar infrastructure. However these infrastructures likely have variables that define the differences. Traditionally you store these variables in a `*.tfvars` file however you now have the problem of sharing this file. What would be great is if you could store these values directly in the terraform state, that way you would only have to switch workspaces to work on a different infrastructure.
 
-The main goal of this provider is that a lot of time, terraform contains
-secrets in it's state file anyways. Instead of putting them in the repo and
-the loading them with `"${file("./secret")}"` why not import them directly
-into the state file?
+With the `statevar` provider you can create a string resource that is stored in the terraform state and can have an optional default value. If you want to override this value you `terraform import` a new value.
 
-When using a remote state file, the state is automatically distributed with
-the new secret which makes key rotation easier.
+Lets say I want to store an EC2 instance size for my machines:
+```terraform
+resource "statevar_string" "ec2_instance_type" {
+  default = "t2.small"
+}
+```
 
-This is only a better solution than storing secrets in Git. Look at adopting
-Hashicorp Vault in the longer term.
+I can now reference this as `"${statevar_string.ec2_instance_type.value}"` in my `aws_instance` definition.
+
+A `t2.small` is fine for development environments but I want something a bit bigger in staging:
+```
+terraform state rm statevar_string.ec2_instance_type
+terraform import statevar_string.ec2_instance_type "t2.large"
+```
+An unfortunate limitation of terraform is that when I import, this will set the `default` value in state to `""`. This is no big deal but this means next time I `terraform apply` I will get:
+```
+  ~ statevar_string.ec2_instance_type
+      default: "" => "t2.small"
+```
+This does not change the `value` you imported to state, it just corrects the default value in state to the one you have configured.
+
+Now lets say I want to store the environment name:
+```
+resource "statevar_string" "environment" {}
+```
+I haven't provided a `default` value because we don't want clashing names, so we will need to import our value:
+```
+terraform import statevar_string.environment "staging"
+```
 
 ## Requirements
 
@@ -25,7 +46,7 @@ Hashicorp Vault in the longer term.
 
 ### Using pre-built binary
 
-1. Download the binary from the project [releases page](https://github.com/sl1pm4t/terraform-provider-secret/releases/latest)
+1. Download the binary from the project [releases page](https://github.com/shmish111/terraform-provider-statevar/releases/latest)
 2. Extract provider binary from tar file.
 3. Copy to `$PATH` or the `~/.terraform.d/plugins` directory so Terraform can find it.
 
@@ -35,30 +56,21 @@ Hashicorp Vault in the longer term.
 2. Use `go get` to pull down this repository and compile the binary:
 
 ```
-go get -u -v github.com/tweag/terraform-provider-secret
-```
-
-### Using Nix
-
-If you are lucky enough to use [Nix](https://builtwithnix.org), it's
-already part of the full terraform distribution:
-
-```sh
-nix-env -iA nixpkgs.terraform-full
+go get -u -v github.com/shmish111/terraform-provider-statevar
 ```
 
 ## Building The Provider
 
-Clone repository to: `$GOPATH/src/github.com/tweag/terraform-provider-secret`
+Clone repository to: `$GOPATH/src/github.com/shmish111/terraform-provider-statevar`
 
 ```sh
-$ git clone git@github.com:tweag/terraform-provider-secret $GOPATH/src/github.com/tweag/terraform-provider-secret
+$ git clone git@github.com:tweag/terraform-provider-statevar $GOPATH/src/github.com/shmish111/terraform-provider-statevar
 ```
 
 Enter the provider directory and build the provider
 
 ```sh
-$ cd $GOPATH/src/github.com/tweag/terraform-provider-secret
+$ cd $GOPATH/src/github.com/shmish111/terraform-provider-statevar
 $ make build
 ```
 
@@ -69,36 +81,8 @@ Using the provider
 
 **Schema**:
 
-* `value`, string: Returns the value of the secret
-
-### Example
-
-Here we declare a new resource that will contain the secret.
-
-```tf
-resource "secret_resource" "datadog_api_key" {
-  lifecycle {
-    # avoid accidentally loosing the secret
-    prevent_destroy = true
-  }
-}
-```
-
-To populate the secret, run
-```
-terraform import secret_resourc.datadog_api_key TOKEN
-```
-where `TOKEN` is the value of the token.
-
-Once imported, the secret can be accessed using
-`secret_resourc.datadog_api_key.value`
-
-### Rotating secrets
-
-```sh
-terraform state rm secret_resource.datadog_api_key
-terraform import secret_resourc.datadog_api_key NEW_TOKEN
-```
+* `value`, string: Returns the value of the string
+* `default`, string: The default value if no value is imported
 
 ## Developing the Provider
 
@@ -109,7 +93,7 @@ To compile the provider, run `make build`. This will build the provider and put 
 ```sh
 $ make bin
 ...
-$ $GOPATH/bin/terraform-provider-secret
+$ $GOPATH/bin/terraform-provider-statevar
 ...
 ```
 
@@ -131,15 +115,3 @@ $ make testacc
 
 This work is licensed under the Mozilla Public License 2.0. See
 [LICENSE](LICENSE) for more details.
-
-## Sponsors
-
-This work has been sponsored by [Digital Asset](https://digitalasset.com) and [Tweag I/O](https://tweag.io).
-
-[![Digital Asset](https://avatars1.githubusercontent.com/u/9829909?s=200&v=4)](http://digitalasset.com)
-[![Tweag I/O](https://avatars1.githubusercontent.com/u/6057932?s=200&v=4)](https://tweag.io)
-
-This repository is maintained by [Tweag I/O](http://tweag.io)
-
-Have questions? Need help? Tweet at
-[@tweagio](http://twitter.com/tweagio).

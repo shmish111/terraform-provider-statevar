@@ -1,4 +1,4 @@
-package secret
+package statevar
 
 import (
 	"github.com/hashicorp/terraform/helper/schema"
@@ -11,7 +11,8 @@ func Provider() terraform.ResourceProvider {
 		Schema: map[string]*schema.Schema{},
 
 		ResourcesMap: map[string]*schema.Resource{
-			"secret_resource": resource(),
+			"statevar_secret": secretResource(),
+			"statevar_string": stringResource(),
 		},
 	}
 }

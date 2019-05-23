@@ -594,5 +594,5 @@
 			"versionExact": "v1.6.1"
 		}
 	],
-	"rootPath": "github.com/tweag/terraform-provider-secret"
+	"rootPath": "github.com/shmish111/terraform-provider-statevar"
 }
